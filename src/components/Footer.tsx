@@ -1,6 +1,7 @@
 import React from 'react';
 import { Todo } from '../types/Todo';
 import classNames from 'classnames';
+import { FilterQuery } from '../types/FilterQuery';
 
 type Props = {
   todos: Todo[];
@@ -26,10 +27,10 @@ export const Footer: React.FC<Props> = ({
         <a
           href="#/"
           className={classNames('filter__link', {
-            selected: activeBtn === 'all',
+            selected: activeBtn === FilterQuery.All,
           })}
           data-cy="FilterLinkAll"
-          onClick={() => handleChangeFilter('all')}
+          onClick={() => handleChangeFilter(FilterQuery.All)}
         >
           All
         </a>
@@ -37,10 +38,10 @@ export const Footer: React.FC<Props> = ({
         <a
           href="#/active"
           className={classNames('filter__link', {
-            selected: activeBtn === 'active',
+            selected: activeBtn === FilterQuery.Active,
           })}
           data-cy="FilterLinkActive"
-          onClick={() => handleChangeFilter('active')}
+          onClick={() => handleChangeFilter(FilterQuery.Active)}
         >
           Active
         </a>
@@ -48,10 +49,10 @@ export const Footer: React.FC<Props> = ({
         <a
           href="#/completed"
           className={classNames('filter__link', {
-            selected: activeBtn === 'completed',
+            selected: activeBtn === FilterQuery.Completed,
           })}
           data-cy="FilterLinkCompleted"
-          onClick={() => handleChangeFilter('completed')}
+          onClick={() => handleChangeFilter(FilterQuery.Completed)}
         >
           Completed
         </a>

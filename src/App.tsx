@@ -8,6 +8,7 @@ import { Header } from './components/Header';
 import { TodoList } from './components/TodoList';
 import { Footer } from './components/Footer';
 import { ErrorsHandler } from './components/ErrorsHandler';
+import { FilterQuery } from './types/FilterQuery';
 
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -115,11 +116,11 @@ export const App: React.FC = () => {
     setFilteredTodos(
       todos.filter(todo => {
         switch (activeFilterBtn) {
-          case 'all':
+          case FilterQuery.All:
             return true;
-          case 'active':
+          case FilterQuery.Active:
             return !todo.completed;
-          case 'completed':
+          case FilterQuery.Completed:
             return todo.completed;
           default:
             return false;
