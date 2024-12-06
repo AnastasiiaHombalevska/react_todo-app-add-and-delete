@@ -1,19 +1,24 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { UserWarning } from './UserWarning';
-import { USER_ID, getTodos } from './api/todos';
+import * as clientService from './api/todos';
 import { Todo } from './types/Todo';
 import classNames from 'classnames';
 
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
-  // const [selectedTodo, setsSelectedTodo] = useState<Todo | null>();
+  const [filteredTodos, setFilteredTodos] = useState<Todo[]>([]);
+
   const [filterQuery, setFilterQuery] = useState('all');
   const [errorMessage, setErrorMessage] = useState('');
 
+  const [title, setTitle] = useState('');
+  const [isFocused, setIsFocused] = useState(true);
+  const [isDisabled, setIsDisabled] = useState(false);
+
   useEffect(() => {
-    getTodos()
+    clientService.getTodos()
       .then((todosData: Todo[]) => {
         setTodos(todosData);
       })
@@ -22,16 +27,60 @@ export const App: React.FC = () => {
       });
   }, []);
 
-  // const setErrorMgs = () => {
-  //     if (!todos) {
-  //       setErrorMessage('Unable to load todos');
-  //     }
-  //     // Unable to add a todo
-  //     //     <br />
-  //     //     Unable to delete a todo
-  //     //     <br />
-  //     //     Unable to update a todo
-  // }
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!title.trim()) {
+      setErrorMessage('Title should not be empty');
+      return;
+    }
+
+    const newTodo: Todo = {
+      id: Math.max(0, ...todos.map(todo => todo.id)) + 1,
+      title: title.trim(),
+      userId: clientService.USER_ID,
+      completed: false,
+    };
+
+    setIsDisabled(true);
+
+    clientService.addTodos(newTodo)
+      .then(addedTodo => {
+        setTodos(prevTodos => [...prevTodos, addedTodo]);
+        setTitle('');
+        setErrorMessage('');
+      })
+      .catch(() => {
+        setErrorMessage('Unable to add a todo');
+      })
+      .finally(() => {
+        setIsDisabled(false);
+        setIsFocused(true);
+      });
+  };
+
+  const TodoDeleteButton = (id: number) => {
+    setIsDisabled(true);
+
+    clientService.deleteTodos(id)
+      .then(() => {
+        setTodos(prevTodos => prevTodos.filter(todo => todo.id !== id));
+        setIsFocused(true);
+      })
+      .catch(() => setErrorMessage('Unable to delete a todo'));
+  };
+
+  const changeCompleted = (id: number) => {
+    setTodos(prevTodos =>
+      prevTodos.map(todo =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+      )
+    );
+  };
+
+  const clearCompleted = () => {
+    setFilteredTodos(todos.filter(todo => !todo.completed));
+  }
 
   useEffect(() => {
     if (errorMessage) {
@@ -47,8 +96,8 @@ export const App: React.FC = () => {
     return () => {};
   }, [errorMessage]);
 
-  const filteredTodos = useMemo(() => {
-    return todos.filter((todo: Todo) => {
+  useEffect(() => {
+    setFilteredTodos(todos.filter(todo => {
       switch (filterQuery) {
         case 'all':
           return true;
@@ -59,12 +108,10 @@ export const App: React.FC = () => {
         default:
           return false;
       }
-    });
+    }))
   }, [todos, filterQuery]);
 
-  const allActiveTodos = () => todos.every(todo => todo.completed);
-
-  if (!USER_ID) {
+  if (!clientService.USER_ID) {
     return <UserWarning />;
   }
 
@@ -78,18 +125,24 @@ export const App: React.FC = () => {
           <button
             type="button"
             className={classNames('todoapp__toggle-all', {
-              active: allActiveTodos,
+              active: todos.every(todo => todo.completed),
             })}
             data-cy="ToggleAllButton"
           />
 
           {/* Add a todo on form submit */}
-          <form>
+          <form onSubmit={handleSubmit}>
             <input
               data-cy="NewTodoField"
               type="text"
               className="todoapp__new-todo"
               placeholder="What needs to be done?"
+              value={title}
+              onChange={event => setTitle(event.target.value)}
+              disabled={isDisabled}
+              autoFocus={isFocused}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
             />
           </form>
         </header>
@@ -102,15 +155,14 @@ export const App: React.FC = () => {
               className={classNames('todo', {
                 completed: todo.completed,
               })}
-              // onFocus={() => setIsFocused(true)}
-              // onBlur={() => setIsFocused(false)}
             >
               <label className="todo__status-label">
                 <input
                   data-cy="TodoStatus"
                   type="checkbox"
-                  className={classNames({ todo__completed: todo.completed })}
+                  className="todo__status"
                   checked={todo.completed}
+                  onChange={() => changeCompleted(todo.id)}
                 />
               </label>
 
@@ -118,11 +170,11 @@ export const App: React.FC = () => {
                 {todo.title}
               </span>
 
-              {/* Remove button appears only on hover */}
               <button
                 type="button"
                 className="todo__remove"
                 data-cy="TodoDelete"
+                onClick={() => TodoDeleteButton(todo.id)}
               >
                 ×
               </button>
@@ -134,44 +186,6 @@ export const App: React.FC = () => {
               </div>
             </div>
           ))}
-          {/* This is a completed todo */}
-          {/* <div data-cy="Todo" className="todo completed">
-            <label className="todo__status-label">
-              <input
-                data-cy="TodoStatus"
-                type="checkbox"
-                className="todo__status"
-                checked
-              />
-            </label>
-
-            <span data-cy="TodoTitle" className="todo__title">
-              Completed Todo
-            </span>
-
-          {/* This todo is an active todo */}
-          {/* <div data-cy="Todo" className="todo">
-            <label className="todo__status-label">
-              <input
-                data-cy="TodoStatus"
-                type="checkbox"
-                className="todo__status"
-              />
-            </label>
-
-            <span data-cy="TodoTitle" className="todo__title">
-              Not Completed Todo
-            </span>
-            <button type="button" className="todo__remove" data-cy="TodoDelete">
-              ×
-            </button>
-
-            <div data-cy="TodoLoader" className="modal overlay">
-              <div className="modal-background has-background-white-ter" />
-              <div className="loader" />
-            </div>
-          </div> */}
-
           {/* This todo is being edited */}
           {/* <div data-cy="Todo" className="todo">
             <label className="todo__status-label">
@@ -226,7 +240,7 @@ export const App: React.FC = () => {
         </section>
 
         {/* Hide the footer if there are no todos */}
-        {filteredTodos.length !== 0 && (
+        {todos.length !== 0 && (
           <footer className="todoapp__footer" data-cy="Footer">
             <span className="todo-count" data-cy="TodosCounter">
               {todos.filter(todo => !todo.completed).length} items left
@@ -274,6 +288,7 @@ export const App: React.FC = () => {
               className="todoapp__clear-completed"
               data-cy="ClearCompletedButton"
               disabled={!filteredTodos.some(todo => todo.completed)}
+              onClick={() => clearCompleted}
             >
               Clear completed
             </button>
